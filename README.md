@@ -52,7 +52,8 @@ equipment-loan-aws/
 ├── infra/
 │   └── test-event-health.json  event uji untuk Lambda di console
 ├── docs/
-│   ├── architecture.png      diagram arsitektur
+│   ├── architecture.png      diagram arsitektur (gambar)
+│   ├── architecture.drawio   diagram arsitektur (bisa diedit di draw.io)
 │   ├── api-spec.md           spesifikasi API
 │   ├── deployment-guide.md   panduan deployment langkah demi langkah
 │   └── evidence/             screenshot bukti AWS
