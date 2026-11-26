@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Hasil build backend
+backend/build/
+backend/dist/
+
+# Node dan Next.js
+node_modules/
+frontend/.next/
+frontend/out/
+frontend/next-env.d.ts
+
+# Secrets dan credential (jangan pernah di-commit)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.aws/
+credentials
+config.local.*
+
+# File editor dan OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
