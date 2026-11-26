@@ -30,7 +30,7 @@ def _table():
     return _dynamodb().Table(config.table_name())
 
 
-def _now() -> str:
+def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
@@ -60,7 +60,7 @@ def ping() -> dict:
 
 
 def create_loan(data: dict) -> dict:
-    now = _now()
+    now = now_iso()
     item = {
         **data,
         "loanId": str(uuid.uuid4()),
@@ -109,7 +109,7 @@ def list_loans(status: Optional[str] = None) -> list:
 
 def update_loan(loan_id: str, changes: dict) -> Optional[dict]:
     """Ubah sebagian field. Nilai None berarti field tersebut dihapus dari item."""
-    changes = {**changes, "updatedAt": _now()}
+    changes = {**changes, "updatedAt": now_iso()}
 
     set_parts, remove_parts = [], []
     names, values = {}, {}
