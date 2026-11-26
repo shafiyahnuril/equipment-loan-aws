@@ -98,9 +98,10 @@ def ensure_lambda(cfg, role_arn, bucket, zip_path):
         changes.append("Konfigurasi Lambda diperbarui")
 
 
-def ensure_url(cfg):
+def ensure_url(cfg, extra_origins=()):
     region, fn = cfg["region"], cfg["functionName"]
-    cors = {"AllowOrigins": cfg["corsOrigins"], "AllowMethods": cfg["corsMethods"], "AllowHeaders": cfg["corsHeaders"]}
+    origins = list(cfg["corsOrigins"]) + [o for o in extra_origins if o not in cfg["corsOrigins"]]
+    cors = {"AllowOrigins": origins, "AllowMethods": cfg["corsMethods"], "AllowHeaders": cfg["corsHeaders"]}
     cors_file = write_tmp_json("restore-cors.json", cors)
     existing = None
     code, out, _ = aws(["lambda", "get-function-url-config", "--function-name", fn, "--output", "json"], region, check=False)
@@ -143,6 +144,75 @@ def ensure_url(cfg):
     return url.rstrip("/")
 
 
+def web_origin(cfg, web):
+    return "http://%s.s3-website-%s.amazonaws.com" % (web, cfg["region"])
+
+
+def ensure_website(cfg, web):
+    """Membuka akses baca publik HANYA untuk bucket website dan mengaktifkan static website hosting."""
+    region = cfg["region"]
+    policy = {"Version": "2012-10-17", "Statement": [{"Sid": "PublicReadWebsite", "Effect": "Allow", "Principal": "*",
+                                                       "Action": "s3:GetObject", "Resource": "arn:aws:s3:::%s/*" % web}]}
+    code, out, _ = aws(["s3api", "get-public-access-block", "--bucket", web, "--output", "json"], region, check=False)
+    block = json.loads(out)["PublicAccessBlockConfiguration"] if code == 0 else {}
+    if block.get("BlockPublicPolicy") is False and block.get("RestrictPublicBuckets") is False:
+        say("Public Access Block bucket website sudah sesuai.")
+    else:
+        say("Melonggarkan Public Access Block khusus bucket %s (policy publik diizinkan, ACL tetap diblokir)" % web)
+        if not DRY:
+            aws(["s3api", "put-public-access-block", "--bucket", web, "--public-access-block-configuration",
+                 "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=false,RestrictPublicBuckets=false"], region)
+        changes.append("Public Access Block bucket website dilonggarkan")
+    code, out, _ = aws(["s3api", "get-bucket-policy", "--bucket", web, "--output", "json"], region, check=False)
+    if code == 0 and json.loads(json.loads(out)["Policy"]) == policy:
+        say("Bucket policy website sudah sesuai.")
+    else:
+        say("Memasang bucket policy s3:GetObject untuk %s/*" % web)
+        if not DRY:
+            aws(["s3api", "put-bucket-policy", "--bucket", web, "--policy", write_tmp_json("restore-web-policy.json", policy)], region)
+        changes.append("Bucket policy website dipasang")
+    wanted = {"IndexDocument": {"Suffix": "index.html"}, "ErrorDocument": {"Key": "404.html"}}
+    code, out, _ = aws(["s3api", "get-bucket-website", "--bucket", web, "--output", "json"], region, check=False)
+    have = json.loads(out) if code == 0 else {}
+    if have.get("IndexDocument") == wanted["IndexDocument"] and have.get("ErrorDocument") == wanted["ErrorDocument"]:
+        say("Static website hosting sudah sesuai.")
+    else:
+        say("Mengaktifkan static website hosting")
+        if not DRY:
+            aws(["s3api", "put-bucket-website", "--bucket", web, "--website-configuration", write_tmp_json("restore-web.json", wanted)], region)
+        changes.append("Static website hosting diaktifkan")
+
+
+def deploy_frontend(cfg, url, web):
+    env_path = ROOT / "frontend" / ".env.production"
+    content = "NEXT_PUBLIC_API_URL=%s\n" % url
+    current = env_path.read_text(encoding="utf-8") if env_path.exists() else ""
+    if current != content:
+        say("Memperbarui frontend/.env.production")
+        changes.append(".env.production diperbarui")
+    say("Build frontend lalu sinkronkan out/ ke root s3://%s" % web)
+    if DRY:
+        return
+    env_path.write_text(content, encoding="utf-8")
+    npm = "npm.cmd" if sys.platform == "win32" else "npm"
+    subprocess.run([npm, "ci"], check=True, cwd=str(ROOT / "frontend"))
+    subprocess.run([npm, "run", "build"], check=True, cwd=str(ROOT / "frontend"))
+    _, out, _ = aws(["s3", "sync", str(ROOT / "frontend" / "out"), "s3://%s" % web, "--delete"], cfg["region"])
+    if out.strip():
+        changes.append("Isi website disinkronkan (%d perubahan)" % len(out.strip().splitlines()))
+
+
+def verify_website(origin):
+    if DRY:
+        return None
+    try:
+        status, body = http("GET", origin + "/")
+        return status == 200 and "<html" in body.lower()
+    except Exception as e:  # noqa: BLE001
+        print("Website belum bisa dibuka: %s" % str(e)[:100])
+        return False
+
+
 def http(method, url, body=None):
     req = urllib.request.Request(url, method=method, data=json.dumps(body).encode() if body else None,
                                  headers={"content-type": "application/json"})
@@ -180,7 +250,7 @@ def main():
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--restore-data", action="store_true", help="unggah .local/backup/data ke bucket")
     p.add_argument("--seed", action="store_true", help="isi data contoh lewat API")
-    p.add_argument("--frontend", action="store_true", help="build dan unggah frontend (belum teruji)")
+    p.add_argument("--frontend", action="store_true", help="siapkan bucket website, build, dan unggah frontend")
     a = p.parse_args()
     if a.restore_data and a.seed:
         sys.exit("--restore-data dan --seed tidak boleh dipakai bersamaan.")
@@ -194,7 +264,8 @@ def main():
     bucket = ensure_bucket(cfg, account, cfg["dataBucketBase"])
     zip_path = ensure_zip()
     ensure_lambda(cfg, role_arn, bucket, zip_path)
-    url = ensure_url(cfg)
+    web = ensure_bucket(cfg, account, cfg["webBucketBase"], public=True) if a.frontend else None
+    url = ensure_url(cfg, [web_origin(cfg, web)] if web else [])
 
     if a.restore_data:
         data_dir = LOCAL / "backup" / "data"
@@ -206,15 +277,11 @@ def main():
         print("Mengisi data contoh:")
         seed(url)
         changes.append("Data contoh ditambahkan")
+    site_ok = None
     if a.frontend:
-        web = ensure_bucket(cfg, account, cfg["webBucketBase"], public=True)
-        say("Build frontend dengan NEXT_PUBLIC_API_URL=%s lalu unggah ke %s (BELUM TERUJI)" % (url, web))
-        if not DRY:
-            (ROOT / "frontend" / ".env.production").write_text("NEXT_PUBLIC_API_URL=%s\n" % url, encoding="utf-8")
-            npm = "npm.cmd" if sys.platform == "win32" else "npm"
-            subprocess.run([npm, "ci"], check=True, cwd=str(ROOT / "frontend"))
-            subprocess.run([npm, "run", "build"], check=True, cwd=str(ROOT / "frontend"))
-            aws(["s3", "sync", str(ROOT / "frontend" / "out"), "s3://%s" % web, "--delete", "--quiet"], region)
+        ensure_website(cfg, web)
+        deploy_frontend(cfg, url, web)
+        site_ok = verify_website(web_origin(cfg, web))
 
     result = None
     if not DRY:
@@ -228,6 +295,8 @@ def main():
     print("  Function URL : %s" % url)
     print("  Bucket data  : %s" % bucket)
     print("  Verifikasi   : %s" % ("dry-run, dilewati" if DRY else ("LULUS" if result else "GAGAL")))
+    if web:
+        print("  Website      : %s (%s)" % (web_origin(cfg, web), "dry-run, dilewati" if DRY else ("LULUS" if site_ok else "GAGAL")))
     print("  Perubahan    : %s" % (", ".join(changes) if changes else "tidak ada, semua sudah sesuai"))
     print("Ingat: Function URL berbeda tiap Start Lab. Perbarui frontend/.env.production, "
           "CORS (sandbox_config.json) dan dokumen yang menyebut URL lama.")
