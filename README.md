@@ -69,4 +69,6 @@ python backend/tests/smoke_test.py <URL API>
 
 ## Deployment
 
+Website: http://equipment-loan-web-540586.s3-website-us-east-1.amazonaws.com
+
 Panduan deployment ada di [docs/deployment-guide.md](docs/deployment-guide.md).

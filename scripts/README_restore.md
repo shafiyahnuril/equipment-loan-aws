@@ -33,7 +33,15 @@ Atau, kalau tidak ingin memulihkan data lama, isi data contoh:
 python scripts/sandbox_restore.py --seed
 ```
 
-Opsi `--restore-data` dan `--seed` tidak boleh dipakai bersamaan. Opsi `--frontend` membangun dan mengunggah website, tetapi jalur ini belum pernah dicoba.
+Opsi `--restore-data` dan `--seed` tidak boleh dipakai bersamaan.
+
+Untuk website, tambahkan `--frontend` (bisa digabung dengan opsi di atas):
+
+```
+python scripts/sandbox_restore.py --frontend
+```
+
+Opsi ini menyiapkan bucket website (`webBucketBase` di `sandbox_config.json`) dengan static website hosting, melonggarkan Public Access Block hanya di bucket itu, memasang bucket policy `s3:GetObject`, menambahkan origin website ke CORS Function URL, menulis `frontend/.env.production`, menjalankan `npm ci` dan `npm run build`, lalu menyinkronkan isi `frontend/out/` ke root bucket. Setiap bagian dicek dulu dan hanya diubah bila berbeda. Bucket data tidak disentuh. Jika Sandbox menolak public access, script berhenti dengan pesan error AWS.
 
 4. Hasil akhirnya Function URL baru, ditulis juga ke `.local/last_deploy.json`.
 
@@ -41,7 +49,7 @@ Opsi `--restore-data` dan `--seed` tidak boleh dipakai bersamaan. Opsi `--fronte
 
 Function URL pasti berbeda setiap Start Lab. Perbarui hal berikut:
 
-- `frontend/.env.production` (jika frontend dipakai), lalu build ulang.
+- `frontend/.env.production` dan build ulang: otomatis bila memakai `--frontend`.
 - Dokumen atau catatan yang menyebut URL lama.
 - `corsOrigins` di `sandbox_config.json` jika URL website berubah.
 
