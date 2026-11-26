@@ -1,8 +1,21 @@
-# Panduan Deployment di AWS Learner Lab
+# Panduan Deployment di AWS Academy Sandbox
 
 Panduan ini dipakai untuk membangun semua resource lewat AWS Management Console, langkah demi langkah. Urutannya dibuat supaya setiap langkah menghasilkan bukti (screenshot) yang dibutuhkan untuk deliverable Week 12. Nama file bukti mengikuti daftar di `docs/evidence/README.md`.
 
-Beberapa detail Learner Lab (nama menu, region, ketersediaan layanan) bisa sedikit berbeda di akun masing-masing. Jika tampilan di console tidak sama persis, ikuti tujuan langkahnya.
+Beberapa detail Sandbox (nama menu, region, ketersediaan layanan) bisa sedikit berbeda di akun masing-masing. Jika tampilan di console tidak sama persis, ikuti tujuan langkahnya.
+
+> **Status panduan ini (26 November 2026).** Langkah 1 (DynamoDB) dan langkah 4 (API Gateway) di bawah adalah rancangan awal dan **tidak bisa dijalankan di Sandbox ini**. Saat dicoba, `dynamodb:CreateTable` dan `apigateway:POST` ditolak dengan `AccessDeniedException`. Yang sebenarnya dipakai adalah Jalur D: bucket data S3 dan Lambda Function URL. Ringkasan langkah Jalur D dengan AWS CLI yang sudah dijalankan di AWS asli ada di bawah. Langkah lain (paket Lambda, smoke test, CloudWatch, frontend) tetap berlaku, kecuali frontend yang belum pernah dicoba di AWS.
+
+### Ringkasan Jalur D (sudah diuji di AWS)
+
+1. `aws s3api create-bucket --bucket equipment-loan-data-540586 --region us-east-1`. Biarkan Block Public Access aktif.
+2. Bangun paket dengan `python backend/build_package.py`.
+3. Buat Lambda `equipment-loan-api` (python3.12, x86_64, handler `app.main.handler`, role `LabRole`, 15 detik, 256 MB) dengan environment `STORAGE_BACKEND=s3` dan `DATA_BUCKET=equipment-loan-data-540586`.
+4. Buat Function URL dengan auth type NONE dan CORS (lihat `docs/fallback-guide.md`).
+5. Tambahkan **dua** izin publik: `lambda:InvokeFunctionUrl` dan `lambda:InvokeFunction` (dengan `--invoked-via-function-url`). Dengan hanya satu izin, Function URL membalas 403.
+6. Uji dengan `curl <FunctionUrl>/health` dan `python backend/tests/smoke_test.py <FunctionUrl>`.
+
+Semua langkah di atas bisa diotomatiskan dengan `scripts/sandbox_restore.py` (pembuatan dari nol belum teruji, lihat `scripts/README_restore.md`).
 
 ## 0. Persiapan
 
@@ -14,10 +27,10 @@ Perangkat yang dibutuhkan di komputer:
 
 Langkah awal di AWS:
 
-1. Buka course AWS Academy Learner Lab, masuk ke Learner Lab, lalu klik **Start Lab**.
+1. Buka course AWS Academy Sandbox, lalu klik **Start Lab**.
 2. Tunggu sampai indikator di samping tulisan AWS berubah menjadi hijau, kemudian klik **AWS** untuk membuka console.
 3. Lihat pojok kanan atas console dan catat **region** yang aktif. Biasanya N. Virginia (`us-east-1`). Pakai region yang sama untuk semua resource.
-4. Catat sisa budget yang tampil di halaman Learner Lab. Cek lagi setiap selesai satu tahap besar.
+4. Catat sisa budget yang tampil di halaman Sandbox. Cek lagi setiap selesai satu tahap besar.
 
 Bukti yang diambil: screenshot console yang memperlihatkan region di pojok kanan atas (`E01`).
 
@@ -49,7 +62,7 @@ Script ini menghasilkan `backend/dist/lambda.zip`. Dependency diunduh dalam vers
 2. Pilih **Author from scratch**.
 3. Isi **Function name** dengan `equipment-loan-api`.
 4. Pilih **Runtime** `Python 3.12` dan **Architecture** `x86_64`.
-5. Buka bagian **Change default execution role**, pilih **Use an existing role**, lalu pilih **LabRole**. Learner Lab biasanya tidak mengizinkan pembuatan IAM role baru, jadi LabRole yang dipakai.
+5. Buka bagian **Change default execution role**, pilih **Use an existing role**, lalu pilih **LabRole**. Sandbox tidak mengizinkan pembuatan IAM role baru, jadi LabRole yang dipakai.
 6. Klik **Create function**.
 7. Di tab **Code**, klik **Upload from**, pilih **.zip file**, unggah `backend/dist/lambda.zip`, lalu **Save**.
 8. Masih di tab **Code**, cari **Runtime settings**, klik **Edit**, isi **Handler** dengan `app.main.handler`, lalu simpan.
@@ -217,6 +230,7 @@ Bukti yang diambil: halaman GitHub yang menampilkan daftar commit (`E14`).
 |---|---|---|
 | `Unable to import module 'app.main'` | Struktur zip salah atau handler keliru | Pastikan handler `app.main.handler` dan folder `app` berada di root zip. Buat ulang dengan `build_package.py` |
 | Error saat import `pydantic_core` | Zip dibuat dengan platform yang salah | Buat ulang dengan `build_package.py` dan pastikan architecture Lambda `x86_64` |
+| Function URL membalas 403 | Hanya izin `lambda:InvokeFunctionUrl` yang terpasang | Tambahkan juga `lambda:InvokeFunction` untuk principal `*` dengan `--invoked-via-function-url` |
 | API membalas `{"message":"Not Found"}` | Route atau method belum dibuat | Cek daftar route di API Gateway |
 | API membalas 500 dengan detail penyimpanan data | `TABLE_NAME` salah atau LabRole tidak punya akses | Cek environment variable dan buka CloudWatch Logs |
 | Browser menampilkan error CORS | Origin belum didaftarkan atau ada garis miring di akhir | Samakan origin dengan alamat di address bar, lengkap dengan `http://` |

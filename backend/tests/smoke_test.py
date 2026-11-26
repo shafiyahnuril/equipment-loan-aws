@@ -59,7 +59,7 @@ def main():
 
     print("Menguji API: %s\n" % base_url)
 
-    check("Health check (Lambda terhubung ke DynamoDB)", "GET", base_url, "/health", 200)
+    check("Health check (Lambda terhubung ke penyimpanan data)", "GET", base_url, "/health", 200)
 
     created = check(
         "Create peminjaman baru",

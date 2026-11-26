@@ -1,8 +1,8 @@
 # Spesifikasi API
 
-Base URL adalah Invoke URL dari API Gateway, misalnya `https://abc123.execute-api.us-east-1.amazonaws.com`. Semua request dan response memakai format JSON.
+Base URL adalah Function URL dari Lambda (Jalur D), misalnya `https://abc123.lambda-url.us-east-1.on.aws`. Jika memakai API Gateway, base URL-nya Invoke URL, misalnya `https://abc123.execute-api.us-east-1.amazonaws.com`. Semua request dan response memakai format JSON.
 
-Setelah deploy, dokumentasi interaktif (Swagger UI) juga tersedia di `/docs` jika route `GET /docs` dan `GET /openapi.json` ditambahkan di API Gateway.
+Dokumentasi interaktif (Swagger UI) di `/docs` hanya terjangkau jika memakai API Gateway dan route `GET /docs` serta `GET /openapi.json` ditambahkan. Pada Function URL semua path diteruskan ke Lambda, tetapi `/docs` belum diuji di AWS.
 
 ## Ringkasan endpoint
 
@@ -13,9 +13,9 @@ Setelah deploy, dokumentasi interaktif (Swagger UI) juga tersedia di `/docs` jik
 | Read (satu) | `GET /loans/{loanId}` | Mengambil satu peminjaman | 200 | 404 |
 | Update | `PUT /loans/{loanId}` | Mengubah data atau menandai sudah dikembalikan | 200 | 404, 422 |
 | Delete | `DELETE /loans/{loanId}` | Menghapus data peminjaman | 204 | 404 |
-| Health | `GET /health` | Mengecek koneksi Lambda ke DynamoDB | 200 | 503 |
+| Health | `GET /health` | Mengecek koneksi Lambda ke penyimpanan data (S3 atau DynamoDB) | 200 | 503 |
 
-Seluruh endpoint bisa mengembalikan status 500 jika DynamoDB tidak bisa diakses.
+Seluruh endpoint bisa mengembalikan status 500 jika penyimpanan data tidak bisa diakses.
 
 ## Entity Loan
 
@@ -106,6 +106,14 @@ Response 204 tanpa body. Jika ID tidak ada, response 404.
 
 Response 200 jika Lambda berhasil membaca metadata tabel:
 
+Dengan backend S3 (Jalur D, sudah diuji di AWS):
+
+```json
+{ "status": "ok", "storage": "s3", "bucket": "equipment-loan-data-540586" }
+```
+
+Dengan backend DynamoDB (tidak bisa dipakai di Sandbox ini, hanya diuji dengan mock):
+
 ```json
 { "status": "ok", "table": "EquipmentLoans", "tableStatus": "ACTIVE" }
 ```
@@ -113,7 +121,7 @@ Response 200 jika Lambda berhasil membaca metadata tabel:
 Response 503 jika tabel tidak bisa diakses:
 
 ```json
-{ "status": "error", "detail": "Tidak bisa terhubung ke DynamoDB" }
+{ "status": "error", "detail": "Tidak bisa terhubung ke penyimpanan data" }
 ```
 
 ## Format error
@@ -122,5 +130,5 @@ Response 503 jika tabel tidak bisa diakses:
 |---|---|---|
 | 404 | ID tidak ditemukan | `{"detail": "Data peminjaman tidak ditemukan"}` |
 | 422 | Input tidak lolos validasi atau ID bukan UUID | `{"detail": [{"loc": ["body", "quantity"], "msg": "...", "type": "..."}]}` |
-| 500 | DynamoDB tidak bisa diakses | `{"detail": "Terjadi kesalahan pada penyimpanan data"}` |
+| 500 | Penyimpanan data tidak bisa diakses | `{"detail": "Terjadi kesalahan pada penyimpanan data"}` |
 | 503 | Health check gagal | `{"status": "error", "detail": "..."}` |
