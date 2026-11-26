@@ -30,3 +30,4 @@ config.local.*
 .idea/
 .DS_Store
 Thumbs.db
+*.tsbuildinfo
