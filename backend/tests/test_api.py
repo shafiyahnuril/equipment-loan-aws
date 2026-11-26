@@ -1,4 +1,6 @@
-"""Test untuk seluruh endpoint. DynamoDB di-mock dengan moto, jadi tidak butuh akun AWS."""
+"""Test untuk seluruh endpoint. DynamoDB dan S3 di-mock dengan moto, jadi tidak butuh akun AWS.
+
+Setiap test dijalankan dua kali, sekali untuk backend DynamoDB dan sekali untuk backend S3."""
 
 import os
 
@@ -8,6 +10,7 @@ from fastapi.testclient import TestClient
 from moto import mock_aws
 
 TABLE = "EquipmentLoansTest"
+BUCKET = "equipment-loan-data-test"
 
 
 @pytest.fixture(autouse=True)
@@ -18,8 +21,15 @@ def aws_env(monkeypatch):
     monkeypatch.setenv("TABLE_NAME", TABLE)
 
 
+@pytest.fixture(params=["dynamodb", "s3"])
+def backend(request, monkeypatch):
+    monkeypatch.setenv("STORAGE_BACKEND", request.param)
+    monkeypatch.setenv("DATA_BUCKET", BUCKET)
+    return request.param
+
+
 @pytest.fixture
-def client(aws_env):
+def client(aws_env, backend):
     from app import repository
     from app.main import app
 
@@ -30,9 +40,25 @@ def client(aws_env):
             AttributeDefinitions=[{"AttributeName": "loanId", "AttributeType": "S"}],
             BillingMode="PAY_PER_REQUEST",
         )
+        boto3.client("s3", region_name="us-east-1").create_bucket(Bucket=BUCKET)
         repository.reset_cache()
         yield TestClient(app)
         repository.reset_cache()
+
+
+def break_storage(monkeypatch, backend):
+    """Arahkan aplikasi ke tabel atau bucket yang tidak ada."""
+    if backend == "s3":
+        monkeypatch.setenv("DATA_BUCKET", "bucket-yang-tidak-ada")
+    else:
+        monkeypatch.setenv("TABLE_NAME", "TabelYangTidakAda")
+
+
+def fix_storage(monkeypatch, backend):
+    if backend == "s3":
+        monkeypatch.setenv("DATA_BUCKET", BUCKET)
+    else:
+        monkeypatch.setenv("TABLE_NAME", TABLE)
 
 
 def sample(**overrides):
@@ -58,17 +84,20 @@ def create(client, **overrides):
 # ---------- health ----------
 
 
-def test_health_ok(client):
+def test_health_ok(client, backend):
     response = client.get("/health")
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "ok"
-    assert body["table"] == TABLE
-    assert body["tableStatus"] == "ACTIVE"
+    if backend == "s3":
+        assert body["bucket"] == BUCKET
+    else:
+        assert body["table"] == TABLE
+        assert body["tableStatus"] == "ACTIVE"
 
 
-def test_health_returns_503_when_table_missing(client, monkeypatch):
-    monkeypatch.setenv("TABLE_NAME", "TabelYangTidakAda")
+def test_health_returns_503_when_storage_missing(client, backend, monkeypatch):
+    break_storage(monkeypatch, backend)
     response = client.get("/health")
     assert response.status_code == 503
     assert response.json()["status"] == "error"
@@ -213,13 +242,13 @@ def test_delete_unknown_id_returns_404(client):
 # ---------- failure dan recovery ----------
 
 
-def test_wrong_table_name_gives_500_then_recovers(client, monkeypatch):
-    monkeypatch.setenv("TABLE_NAME", "TabelYangTidakAda")
+def test_wrong_storage_config_gives_500_then_recovers(client, backend, monkeypatch):
+    break_storage(monkeypatch, backend)
     response = client.get("/loans")
     assert response.status_code == 500
     assert "penyimpanan data" in response.json()["detail"]
 
-    monkeypatch.setenv("TABLE_NAME", TABLE)
+    fix_storage(monkeypatch, backend)
     assert client.get("/loans").status_code == 200
 
 

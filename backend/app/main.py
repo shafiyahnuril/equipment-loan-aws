@@ -17,7 +17,7 @@ logger = logging.getLogger("equipment-loan")
 app = FastAPI(
     title="Equipment Loan API",
     version="0.1.0",
-    description="REST API untuk mencatat peminjaman alat laboratorium. Berjalan di AWS Lambda dengan DynamoDB.",
+    description="REST API untuk mencatat peminjaman alat laboratorium. Berjalan di AWS Lambda dengan DynamoDB (atau S3 sebagai cadangan).",
 )
 
 

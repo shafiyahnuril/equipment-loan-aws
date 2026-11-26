@@ -44,7 +44,7 @@ Alur request secara singkat: browser memuat halaman dari S3, lalu JavaScript di 
 ```
 equipment-loan-aws/
 ├── backend/
-│   ├── app/                  kode FastAPI (main, routes, schemas, repository, config)
+│   ├── app/                  kode FastAPI (main, routes, schemas, repository DynamoDB dan S3, config)
 │   ├── tests/                unit test (pytest + moto) dan smoke_test.py
 │   ├── build_package.py      membuat dist/lambda.zip untuk Lambda
 │   └── requirements.txt
@@ -56,6 +56,7 @@ equipment-loan-aws/
 │   ├── architecture.drawio   diagram arsitektur (bisa diedit di draw.io)
 │   ├── api-spec.md           spesifikasi API
 │   ├── deployment-guide.md   panduan deployment langkah demi langkah
+│   ├── fallback-guide.md     rencana cadangan jika DynamoDB atau API Gateway tidak tersedia
 │   └── evidence/             screenshot bukti AWS
 └── tests/
     └── sample-loan.json      contoh body untuk curl
@@ -75,7 +76,7 @@ Detail request, response, dan aturan validasi ada di [docs/api-spec.md](docs/api
 
 ## Menjalankan test secara lokal
 
-Test backend tidak membutuhkan akun AWS karena DynamoDB di-mock dengan moto.
+Test backend tidak membutuhkan akun AWS karena DynamoDB dan S3 di-mock dengan moto. Setiap test dijalankan untuk kedua backend penyimpanan.
 
 ```
 cd backend
@@ -99,7 +100,7 @@ Alamat `http://localhost:3000` harus sudah terdaftar di pengaturan CORS API Gate
 
 ## Rencana deployment
 
-Deployment dilakukan manual lewat console AWS Learner Lab. Panduan lengkapnya ada di [docs/deployment-guide.md](docs/deployment-guide.md).
+Deployment dilakukan manual lewat console AWS Academy Sandbox. Panduan lengkapnya ada di [docs/deployment-guide.md](docs/deployment-guide.md). Jika DynamoDB atau API Gateway ternyata tidak diizinkan di akun, backend mendukung S3 sebagai penyimpanan dan Lambda Function URL sebagai pintu masuk API. Caranya ada di [docs/fallback-guide.md](docs/fallback-guide.md).
 
 | Fase | Isi | Hasil |
 |---|---|---|

@@ -19,7 +19,7 @@ LoanId = Annotated[
 ]
 
 
-@router.get("/health", tags=["Health"], summary="Cek koneksi Lambda ke DynamoDB")
+@router.get("/health", tags=["Health"], summary="Cek koneksi Lambda ke penyimpanan data")
 def health():
     try:
         info = repository.ping()
@@ -27,7 +27,7 @@ def health():
         logger.exception("Health check gagal")
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"status": "error", "detail": "Tidak bisa terhubung ke DynamoDB"},
+            content={"status": "error", "detail": "Tidak bisa terhubung ke penyimpanan data"},
         )
     return {"status": "ok", **info}
 
