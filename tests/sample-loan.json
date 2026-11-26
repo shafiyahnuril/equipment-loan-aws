@@ -1,0 +1,9 @@
+{
+  "borrowerName": "Shafiyah Nuril Hayya",
+  "borrowerNim": "24/540586/TK/60019",
+  "equipmentName": "ESP32 DevKit",
+  "quantity": 2,
+  "loanDate": "2026-11-27",
+  "dueDate": "2026-12-04",
+  "notes": "Untuk praktikum IoT"
+}
