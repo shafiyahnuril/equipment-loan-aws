@@ -1,0 +1,17 @@
+{
+  "region": "us-east-1",
+  "dataBucketBase": "equipment-loan-data-540586",
+  "webBucketBase": "equipment-loan-web-540586",
+  "functionName": "equipment-loan-api",
+  "roleName": "LabRole",
+  "runtime": "python3.12",
+  "handler": "app.main.handler",
+  "memorySize": 256,
+  "timeout": 15,
+  "corsOrigins": [
+    "http://localhost:3000",
+    "http://equipment-loan-web-540586.s3-website-us-east-1.amazonaws.com"
+  ],
+  "corsMethods": ["GET", "POST", "PUT", "DELETE"],
+  "corsHeaders": ["content-type"]
+}
