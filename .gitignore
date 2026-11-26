@@ -31,3 +31,6 @@ config.local.*
 .DS_Store
 Thumbs.db
 *.tsbuildinfo
+
+# Backup Sandbox (berisi data peminjaman)
+.local/
