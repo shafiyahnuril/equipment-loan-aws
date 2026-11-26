@@ -1,0 +1,105 @@
+:root {
+  --bg: #f4f6f8;
+  --card: #ffffff;
+  --text: #1c2630;
+  --muted: #64707d;
+  --line: #dfe4ea;
+  --primary: #0f766e;
+  --primary-dark: #0b5a54;
+  --danger: #b42318;
+  --warn: #b54708;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+}
+
+.container { max-width: 1040px; margin: 0 auto; padding: 32px 20px 64px; }
+.header h1 { margin: 0 0 4px; font-size: 1.9rem; }
+.header p { margin: 0 0 24px; color: var(--muted); }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.card h2 { margin: 0 0 16px; font-size: 1.15rem; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 14px; }
+
+label { display: block; font-size: 0.9rem; font-weight: 600; }
+label.inline { display: flex; align-items: center; gap: 8px; }
+
+input, select, textarea {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 400;
+  background: #fff;
+}
+label.inline select { margin-top: 0; width: auto; }
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--primary); outline-offset: 0; border-color: var(--primary); }
+
+.error { display: block; margin-top: 4px; font-size: 0.8rem; font-weight: 400; color: var(--danger); }
+
+.actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+
+.btn {
+  padding: 9px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn:hover:not(:disabled) { background: #f1f4f7; }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn-small { padding: 5px 10px; font-size: 0.82rem; }
+.btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
+.btn-danger { color: var(--danger); border-color: #f1c0bb; }
+.btn-danger:hover:not(:disabled) { background: #fdf0ef; }
+
+.notice { padding: 12px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 0.92rem; }
+.notice-success { background: #e7f6ef; color: #0b5f3a; border: 1px solid #bfe5d1; }
+.notice-error { background: #fdf0ef; color: var(--danger); border: 1px solid #f1c0bb; }
+
+.list-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.list-header h2 { margin: 0; }
+.list-tools { display: flex; align-items: center; gap: 12px; }
+
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+th { text-align: left; padding: 10px 12px; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+.muted { color: var(--muted); font-size: 0.8rem; }
+.row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 700; }
+.badge-borrowed { background: #e8f0fe; color: #1d4ed8; }
+.badge-returned { background: #e7f6ef; color: #0b5f3a; }
+.badge-overdue { background: #fdf0ef; color: var(--danger); }
+
+.state { text-align: center; color: var(--muted); padding: 28px 12px; margin: 0; }
+.state-error { color: var(--danger); }
+.state-error p { margin: 0 0 10px; }
+
+.overlay { position: fixed; inset: 0; background: rgba(15, 23, 32, 0.45); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.dialog { background: #fff; border-radius: 12px; padding: 22px; max-width: 420px; width: 100%; }
+.dialog h3 { margin: 0 0 8px; }
+.dialog p { margin: 0; color: var(--muted); }
